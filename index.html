@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Analisis Tekanan Ledakan</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      margin: 0;
+      background-color: #f9f9f9;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: auto;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      padding: 20px;
+    }
+
+    h2 {
+      text-align: center;
+      color: #333;
+    }
+
+    label {
+      font-weight: bold;
+      display: block;
+      margin-top: 15px;
+    }
+
+    input[type="number"] {
+      width: 100%;
+      padding: 10px;
+      font-size: 16px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+
+    textarea {
+      width: 100%;
+      height: 180px;
+      margin-top: 15px;
+      padding: 10px;
+      font-size: 14px;
+      border-radius: 6px;
+      resize: none;
+    }
+
+    canvas {
+      margin-top: 30px;
+      max-width: 100%;
+    }
+
+    @media screen and (max-width: 600px) {
+      input, textarea {
+        font-size: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h2>Analisis Tekanan Ledakan</h2>
+
+  <label for="pressureInput">Masukkan tekanan (dalam kPa):</label>
+  <input type="number" id="pressureInput" step="0.01" placeholder="Contoh: 2.5">
+
+  <textarea id="result" readonly></textarea>
+
+  <canvas id="pressureChart" height="100"></canvas>
+</div>
+
+<script>
+  const data = [
+    { min: 0.14, max: 0.14, desc: "Annoying noise (137 dB, low freq 10-15 Hz)" },
+    { min: 0.21, max: 0.21, desc: "Occasional breaking of large glass windows" },
+    { min: 0.28, max: 0.28, desc: "Loud noise (143 dB), sonic boom, glass failure" },
+    { min: 0.69, max: 0.69, desc: "Breakage of small windows under strain" },
+    { min: 1.03, max: 1.03, desc: "Typical pressure for glass breakage" },
+    { min: 2.07, max: 2.07, desc: "Safe distance (95% no serious damage); minor ceiling damage" },
+    { min: 2.76, max: 2.76, desc: "Limited minor structural damage" },
+    { min: 3.4, max: 6.9, desc: "Windows shatter; occasional damage to window frames" },
+    { min: 4.8, max: 4.8, desc: "Minor damage to house structures" },
+    { min: 6.9, max: 6.9, desc: "Partial demolition of houses" },
+    { min: 6.9, max: 13.8, desc: "Asbestos/metal panels fail; wood panels blow in" },
+    { min: 9, max: 9, desc: "Steel frame of clad building slightly distorted" },
+    { min: 13.8, max: 13.8, desc: "Partial collapse of walls and roofs" },
+    { min: 13.8, max: 20.7, desc: "Unreinforced block walls shatter" },
+    { min: 15.8, max: 15.8, desc: "Lower limit of serious structural damage" },
+    { min: 17.2, max: 17.2, desc: "50% destruction of brickwork" },
+    { min: 20.7, max: 20.7, desc: "Heavy machines undamaged; steel frames distort" },
+    { min: 20.7, max: 27.6, desc: "Steel panel buildings demolished; tanks rupture" },
+    { min: 27.6, max: 27.6, desc: "Cladding of industrial buildings ruptures" },
+    { min: 34.5, max: 34.5, desc: "Wooden utility poles snap; presses slightly damaged" },
+    { min: 34.5, max: 48.2, desc: "Nearly complete destruction of houses" },
+    { min: 48.2, max: 48.2, desc: "Loaded train wagons overturned" },
+    { min: 48.2, max: 55.1, desc: "Unreinforced brick panels shear or flex fail" },
+    { min: 62, max: 62, desc: "Train boxcars completely demolished" },
+    { min: 68.9, max: 68.9, desc: "Total destruction; heavy tools displaced/damaged" },
+    { min: 2068, max: 2068, desc: "Limit of crater lip" }
+  ];
+
+  const pressureInput = document.getElementById("pressureInput");
+  const resultBox = document.getElementById("result");
+
+  const ctx = document.getElementById("pressureChart").getContext("2d");
+  const chart = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: ["Tekanan Anda", "Maksimum"],
+      datasets: [{
+        label: "Tekanan (kPa)",
+        data: [0, 2068],
+        backgroundColor: ["#4CAF50", "#ddd"]
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { enabled: true }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: "kPa"
+          }
+        }
+      }
+    }
+  });
+
+  pressureInput.addEventListener("input", analyzePressure);
+
+  function analyzePressure() {
+    const input = parseFloat(pressureInput.value);
+    const minPressure = 0.14;
+    const maxPressure = 2068;
+
+    if (isNaN(input) || input <= 0) {
+      resultBox.value = "Masukkan tekanan positif di kolom input (dalam kPa)";
+      chart.data.datasets[0].data[0] = 0;
+      chart.update();
+      return;
+    }
+
+    let result = "";
+    let avgPressure = 0;
+    let found = false;
+
+    for (let item of data) {
+      if (input >= item.min && input <= item.max) {
+        result = item.desc;
+        avgPressure = (item.min + item.max) / 2;
+        found = true;
+        break;
+      }
+    }
+
+    if (!found) {
+      let closest = data[0];
+      let minDiff = Math.abs(input - (closest.min + closest.max) / 2);
+
+      for (let item of data) {
+        let avg = (item.min + item.max) / 2;
+        let diff = Math.abs(input - avg);
+        if (diff < minDiff) {
+          closest = item;
+          minDiff = diff;
+          avgPressure = avg;
+        }
+      }
+      result = closest.desc;
+    }
+
+    const percentPosition = (input - minPressure) / (maxPressure - minPressure);
+    let kategori = "Ringan";
+    if (percentPosition >= 0.3) kategori = "Berat";
+    else if (percentPosition >= 0.05) kategori = "Sedang";
+
+    resultBox.value =
+      result + "\n\n" +
+      "Tekanan input: " + input.toFixed(2) + " kPa\n" +
+      "Rata-rata tekanan damage: " + avgPressure.toFixed(2) + " kPa\n" +
+      "Posisi tekanan: " + (percentPosition * 100).toFixed(1) + "% dari maksimum\n" +
+      "Kategori Dampak: " + kategori;
+
+    // Update chart
+    chart.data.datasets[0].data[0] = input;
+    chart.update();
+  }
+</script>
+
+</body>
+</html>
